@@ -1,11 +1,9 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { Link, useNavigate } from 'react-router-dom'
 import {
   Search, Trash2, Plus, Receipt, Printer,
   RefreshCw, ShoppingBag, MessageCircle,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  Wifi, WifiOff, Layers, X, ChevronDown, Power
+  Wifi, WifiOff, Layers, X, ChevronDown
 } from 'lucide-react'
 import { isSupabaseConfigured, supabase } from '../lib/supabase'
 import { useProductStore, useVariantStore, useAdminAuthStore, type Product } from '../store/store'
@@ -72,7 +70,8 @@ type InvoiceSnap = {
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 const toProductId = (v: string | number): string | null => {
-  const s = String(v ?? '').trim(); return s || null
+  const s = String(v ?? '').trim()
+  return /^\d+$/.test(s) ? s : null
 }
 
 const makePosItem = (p: Product, qty?: number): PosItem => {
@@ -107,8 +106,7 @@ export default function Pos(props: PosProps = {}) {
   const { getVariants, fetchVariants } = useVariantStore()
   const { lang } = useLangStore()
   const l = (en: string, ta: string) => lang === 'ta' ? ta : en
-  const navigate = useNavigate()
-  const { logout, role } = useAdminAuthStore()
+  const { role } = useAdminAuthStore()
   const embeddedMode = Boolean(props.isEmbedded)
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [billingAdjOpen, setBillingAdjOpen] = useState(false)
@@ -458,7 +456,7 @@ export default function Pos(props: PosProps = {}) {
           : Math.max(0, Math.round((allocationBase > 0 ? total * item.lineTotal / allocationBase : total / items.length) * 100) / 100)
         allocated += lineTotal
         return {
-          product_id: item.parentProductId || toProductId(item.id), variant_id: item.variantId || null,
+          product_id: toProductId(item.parentProductId || item.id), variant_id: item.variantId || null,
           variant_name: item.variantName || null, name: item.name, category: item.category,
           description: item.note || '', quantity: item.qty, unit: item.selectedUnit, unit_type: item.unitType,
           base_quantity: item.baseQuantity, base_price: Number(item.basePrice) || 0, line_total: lineTotal,
@@ -503,7 +501,7 @@ export default function Pos(props: PosProps = {}) {
         phone: normalizedPhone,
         address: customer.address.trim() || 'POS Counter',
         items: items.map(item => buildStructuredOrderItem({
-          productId:    item.parentProductId ? item.parentProductId : toProductId(item.id),
+          productId:    toProductId(item.parentProductId || item.id),
           variantId:    item.variantId   ?? null,
           variantName:  item.variantName ?? null,
           name: item.name,
@@ -801,116 +799,88 @@ export default function Pos(props: PosProps = {}) {
   return (
     <div data-embedded={embeddedMode} data-panel={mobilePanelView} className="pos-billing-shell flex min-h-screen h-auto w-full min-w-0 max-w-full flex-col bg-bgMain print:hidden overflow-x-hidden">
       {/* Header */}
-      <div className="px-4 pt-4 pb-3 md:px-6 md:pt-6 md:pb-4 shrink-0 flex flex-col gap-4 min-[480px]:flex-row min-[480px]:items-start min-[480px]:justify-between">
+      <div className="shrink-0 px-4 pb-3 pt-4 md:px-6 md:pb-4 md:pt-6">
         <div className="flex min-w-0 items-start gap-2">
           <div className="mt-1 h-6 w-1.5 shrink-0 rounded-full bg-[#CBB89D]"></div>
           <div className="min-w-0">
-            <h2 className="text-2xl font-black leading-tight text-[#111111] md:text-3xl">POS Billing Panel</h2>
+            <h2 className="text-xl font-black leading-tight text-[#111111] md:text-3xl">POS Billing Panel</h2>
             <p className="mt-1 pr-2 text-sm font-medium text-gray-500 md:text-base">Quick Invoice generator & database synced checkout</p>
           </div>
         </div>
 
-        {/* Online/Offline Toggle & Logout */}
-        <div className="flex gap-2 w-full min-[480px]:w-auto">
-          <div className="grid grid-cols-2 bg-white rounded-xl border border-[#D1FAE5]/60 p-1 shadow-sm flex-1 min-[480px]:flex-none">
-            <button
-              onClick={() => setOrderMode('offline')}
-              className={`min-h-[44px] px-4 py-2 rounded-lg text-sm md:text-sm font-black tracking-wider uppercase transition-colors ${orderMode === 'offline' ? 'bg-[#CBB89D] text-[#111111] shadow-sm' : 'text-[#111111] hover:bg-[#EDE4D4]'}`}
-            >
-              Offline
-            </button>
-            <button
-              onClick={() => setOrderMode('online')}
-              className={`min-h-[44px] px-4 py-2 rounded-lg text-sm md:text-sm font-black tracking-wider uppercase transition-colors ${orderMode === 'online' ? 'bg-[#CBB89D] text-[#111111] shadow-sm' : 'text-[#111111] hover:bg-[#EDE4D4]'}`}
-            >
-              Online
-            </button>
-          </div>
-          {!embeddedMode && (
-            <>
-              <button
-                onClick={() => navigate('/dashboard')}
-                className="flex items-center justify-center min-h-[44px] px-4 rounded-xl bg-[#CBB89D] text-[#111111] hover:bg-[#B8A384] transition-colors text-sm font-black tracking-wider uppercase shadow-sm"
-              >
-                Dashboard
-              </button>
-              <button
-                onClick={() => { logout(); navigate('/admin-login', { replace: true }) }}
-                title="Logout"
-                className="flex items-center justify-center min-h-[44px] px-4 rounded-xl border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
-              >
-                <Power size={18} />
-              </button>
-            </>
-          )}
-        </div>
       </div>
 
       {/* Main Content Split */}
-      <div className="flex w-full min-w-0 max-w-full flex-col gap-5 px-4 pb-6 md:gap-6 md:px-6 lg:h-[calc(100vh-120px)] lg:flex-row lg:overflow-hidden">
-
-        <div className="grid grid-cols-2 gap-2 lg:hidden">
-          <button type="button" onClick={() => setMobilePanelView('catalogue')} className={`min-h-11 rounded-xl px-3 py-2 text-xs font-black uppercase tracking-wide ${mobilePanelView === 'catalogue' ? 'bg-[#CBB89D] text-[#111111]' : 'border border-borderLight bg-cardBg text-textMuted'}`}>Catalogue</button>
-          <button type="button" onClick={() => setMobilePanelView('bill')} className={`min-h-11 rounded-xl px-3 py-2 text-xs font-black uppercase tracking-wide ${mobilePanelView === 'bill' ? 'bg-[#CBB89D] text-[#111111]' : 'border border-borderLight bg-cardBg text-textMuted'}`}>Current Bill{items.length > 0 ? ` (${items.length})` : ''}</button>
+      <div className="flex w-full min-w-0 max-w-full flex-col gap-5 px-4 pb-6 md:gap-6 md:px-6 lg:h-[calc(100vh-120px)] lg:overflow-hidden">
+        <div className="pos-mode-controls grid w-full min-w-0 gap-3 lg:grid-cols-2">
+        <div className="segmented-control grid grid-cols-2">
+          <button type="button" onClick={() => setOrderMode('offline')} className={`segmented-control-tab min-h-11 px-3 py-2 text-xs font-black uppercase tracking-wide ${orderMode === 'offline' ? 'bg-[#CBB89D] text-[#111111]' : 'bg-cardBg text-textMuted hover:bg-[#EDE4D4]'}`}>Offline</button>
+          <button type="button" onClick={() => setOrderMode('online')} className={`segmented-control-tab min-h-11 px-3 py-2 text-xs font-black uppercase tracking-wide ${orderMode === 'online' ? 'bg-[#CBB89D] text-[#111111]' : 'bg-cardBg text-textMuted hover:bg-[#EDE4D4]'}`}>Online</button>
+        </div>
+        <div className="segmented-control grid grid-cols-2">
+          <button type="button" onClick={() => setMobilePanelView('catalogue')} className={`segmented-control-tab min-h-11 px-3 py-2 text-xs font-black uppercase tracking-wide ${mobilePanelView === 'catalogue' ? 'bg-[#CBB89D] text-[#111111]' : 'bg-cardBg text-textMuted hover:bg-[#EDE4D4]'}`}>Catalogue</button>
+          <button type="button" onClick={() => setMobilePanelView('bill')} className={`segmented-control-tab min-h-11 px-3 py-2 text-xs font-black uppercase tracking-wide ${mobilePanelView === 'bill' ? 'bg-[#CBB89D] text-[#111111]' : 'bg-cardBg text-textMuted hover:bg-[#EDE4D4]'}`}>Current Bill{items.length > 0 ? ` (${items.length})` : ''}</button>
+        </div>
         </div>
 
+        <div className="pos-layout flex min-w-0 w-full flex-col gap-5 lg:min-h-0 lg:flex-1 lg:flex-row lg:gap-6 lg:overflow-hidden">
         {/* LEFT COLUMN (approx 68%) */}
-        <div className={`${mobilePanelView === 'bill' ? 'hidden lg:flex' : 'flex'} min-w-0 w-full flex-[2.1] flex-col gap-6 lg:overflow-y-auto lg:pb-4 hide-scrollbar`}>
+        <div className={`pos-catalogue-column ${mobilePanelView === 'bill' ? 'hidden lg:flex' : 'flex'} min-w-0 w-full flex-[2.1] flex-col gap-6 lg:overflow-y-auto lg:pb-4 hide-scrollbar`}>
 
           {/* Customer Details Card */}
           <div className="bg-cardBg rounded-2xl border border-borderLight shadow-soft p-4 md:p-5">
-            <h3 className="text-xl md:text-base font-black text-[#111111] flex items-center gap-2 mb-4">
+            <h3 className="text-lg md:text-base font-black text-[#111111] flex items-center gap-2 mb-4">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-[#111111]"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
               Customer Details
             </h3>
             <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
               <div>
-                <label className="block text-base md:text-xs font-black text-[#374151] tracking-wider uppercase mb-1.5">Customer Name</label>
+                <label className="block text-sm md:text-xs font-black text-[#374151] tracking-wider uppercase mb-1.5">Customer Name</label>
                 <input
                   type="text"
                   value={customer.name}
                   onChange={e => setCustomer({...customer, name: e.target.value})}
                   placeholder="Enter name"
-                  className="w-full h-12 px-4 bg-white border border-[#D1FAE5]/60 rounded-xl focus:outline-none focus:border-[#047857] text-lg md:text-base font-bold text-[#111111] placeholder:text-gray-400 placeholder:font-medium"
+                  className="w-full h-12 px-4 bg-white border border-[#D1FAE5]/60 rounded-xl focus:outline-none focus:border-[#047857] text-base md:text-base font-bold text-[#111111] placeholder:text-gray-400 placeholder:font-medium"
                 />
               </div>
               <div>
-                <label className="block text-base md:text-xs font-black text-[#374151] tracking-wider uppercase mb-1.5">Mobile Number (WhatsApp)</label>
+                <label className="block text-sm md:text-xs font-black text-[#374151] tracking-wider uppercase mb-1.5">Mobile Number (WhatsApp)</label>
                 <input
                   type="text"
                   value={customer.phone}
                   onChange={e => setCustomer({...customer, phone: e.target.value})}
                   placeholder="Enter WhatsApp number"
-                  className="w-full h-12 px-4 bg-white border border-[#D1FAE5]/60 rounded-xl focus:outline-none focus:border-[#047857] text-lg md:text-base font-bold text-[#111111] placeholder:text-gray-400 placeholder:font-medium"
+                  className="w-full h-12 px-4 bg-white border border-[#D1FAE5]/60 rounded-xl focus:outline-none focus:border-[#047857] text-base md:text-base font-bold text-[#111111] placeholder:text-gray-400 placeholder:font-medium"
                 />
               </div>
               <div>
-                <label className="block text-base md:text-xs font-black text-[#374151] tracking-wider uppercase mb-1.5">Remarks (Internal)</label>
+                <label className="block text-sm md:text-xs font-black text-[#374151] tracking-wider uppercase mb-1.5">Remarks (Internal)</label>
                 <input
                   type="text"
                   value={remarks}
                   onChange={e => setRemarks(e.target.value)}
                   placeholder="Optional remarks"
-                  className="w-full h-12 px-4 bg-white border border-[#D1FAE5]/60 rounded-xl focus:outline-none focus:border-[#047857] text-lg md:text-base font-bold text-[#111111] placeholder:text-gray-400 placeholder:font-medium"
+                  className="w-full h-12 px-4 bg-white border border-[#D1FAE5]/60 rounded-xl focus:outline-none focus:border-[#047857] text-base md:text-base font-bold text-[#111111] placeholder:text-gray-400 placeholder:font-medium"
                 />
               </div>
               <div>
-                <label className="block text-base md:text-xs font-black text-[#374151] tracking-wider uppercase mb-1.5">Reference Number</label>
+                <label className="block text-sm md:text-xs font-black text-[#374151] tracking-wider uppercase mb-1.5">Reference Number</label>
                 <input
                   type="text"
                   value={referenceNumber}
                   onChange={e => setReferenceNumber(e.target.value)}
                   placeholder="Optional ref no."
-                  className="w-full h-12 px-4 bg-white border border-[#D1FAE5]/60 rounded-xl focus:outline-none focus:border-[#047857] text-lg md:text-base font-bold text-[#111111] placeholder:text-gray-400 placeholder:font-medium"
+                  className="w-full h-12 px-4 bg-white border border-[#D1FAE5]/60 rounded-xl focus:outline-none focus:border-[#047857] text-base md:text-base font-bold text-[#111111] placeholder:text-gray-400 placeholder:font-medium"
                 />
               </div>
               <div>
-                <label className="block text-base md:text-xs font-black text-[#374151] tracking-wider uppercase mb-1.5">Billing Date <span className="normal-case font-semibold text-[#6B7280]">(Optional)</span></label>
+                <label className="block text-sm md:text-xs font-black text-[#374151] tracking-wider uppercase mb-1.5">Billing Date <span className="normal-case font-semibold text-[#6B7280]">(Optional)</span></label>
                 <input
                   type="date"
                   value={billingDate}
                   onChange={e => setBillingDate(e.target.value)}
-                  className="w-full h-12 px-4 bg-white border border-[#D1FAE5]/60 rounded-xl focus:outline-none focus:border-[#047857] text-lg md:text-base font-bold text-[#111111] placeholder:text-gray-400 placeholder:font-medium"
+                  className="w-full h-12 px-4 bg-white border border-[#D1FAE5]/60 rounded-xl focus:outline-none focus:border-[#047857] text-base md:text-base font-bold text-[#111111] placeholder:text-gray-400 placeholder:font-medium"
                 />
                 {!billingDate && <p className="text-xs text-[#9CA3AF] mt-1">Leave blank to use today's date &amp; time</p>}
               </div>
@@ -921,7 +891,7 @@ export default function Pos(props: PosProps = {}) {
           <div className="bg-white rounded-2xl border border-[#D1FAE5]/40 shadow-sm flex-1 flex flex-col min-h-[400px]">
             {/* Card Header */}
             <div className="flex flex-col gap-4 p-4 md:p-5 border-b border-[#D1FAE5]/40">
-              <h3 className="text-xl md:text-base font-black text-[#111111] flex items-center gap-2">
+              <h3 className="text-lg md:text-base font-black text-[#111111] flex items-center gap-2">
                 <Receipt size={16} className="text-[#047857]" />
                 Order Items
               </h3>
@@ -1004,18 +974,18 @@ export default function Pos(props: PosProps = {}) {
                   <div className="md:hidden border border-[#D1FAE5]/30 rounded-2xl p-4 bg-[#FFFDFC] space-y-3">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
-                        <p className="text-base font-black uppercase tracking-wider text-[#374151] mb-1">Product Name</p>
+                        <p className="text-sm font-black uppercase tracking-wider text-[#374151] mb-1">Product Name</p>
                         {item.source === 'manual' ? (
                           <input
                             type="text"
                             value={item.name}
                             onChange={e => updateItem(item.id, 'name', e.target.value)}
                             placeholder="Item name"
-                            className="w-full h-12 px-3 bg-[#FAFAFA] border border-[#D1FAE5]/40 rounded-xl text-lg font-bold text-[#111111] focus:outline-none focus:border-[#047857]"
+                            className="w-full h-12 px-3 bg-white border border-[#D1FAE5]/40 rounded-xl text-base font-bold text-[#111111] focus:outline-none focus:border-[#047857]"
                           />
                         ) : (
                           <div className="rounded-xl border border-[#D1FAE5]/30 bg-white px-3 py-3">
-                            <p className="text-lg font-bold text-[#111111] break-words">{item.name} {item.variantName ? `- ${item.variantName}` : ''}</p>
+                            <p className="text-base font-bold text-[#111111] break-words">{item.name} {item.variantName ? `- ${item.variantName}` : ''}</p>
                           </div>
                         )}
                       </div>
@@ -1030,7 +1000,7 @@ export default function Pos(props: PosProps = {}) {
 
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <p className="text-base font-black uppercase tracking-wider text-[#374151] mb-1">Price</p>
+                        <p className="text-sm font-black uppercase tracking-wider text-[#374151] mb-1">Price</p>
                         <input
                           type="number" onWheel={(e) => (e.target as HTMLInputElement).blur()}
                           value={item.basePrice === 0 ? '' : item.basePrice}
@@ -1044,7 +1014,7 @@ export default function Pos(props: PosProps = {}) {
                         />
                       </div>
                       <div>
-                        <p className="text-base font-black uppercase tracking-wider text-[#374151] mb-1">Total</p>
+                        <p className="text-sm font-black uppercase tracking-wider text-[#374151] mb-1">Total</p>
                         <div className="h-12 rounded-xl border border-[#D1FAE5]/30 bg-white px-3 flex items-center justify-end text-lg font-black text-[#047857]">
                           {formatCurrency(item.lineTotal)}
                         </div>
@@ -1052,7 +1022,7 @@ export default function Pos(props: PosProps = {}) {
                     </div>
 
                     <div>
-                      <p className="text-base font-black uppercase tracking-wider text-[#374151] mb-1">Quantity</p>
+                        <p className="text-sm font-black uppercase tracking-wider text-[#374151] mb-1">Quantity</p>
                       <div className="grid grid-cols-[48px_1fr_48px] items-center gap-2 border border-[#D1FAE5]/60 rounded-xl px-2 py-2 bg-white">
                         <button
                           onClick={() => bumpQty(item.id, -1)}
@@ -1133,12 +1103,12 @@ export default function Pos(props: PosProps = {}) {
         </div>
 
         {/* RIGHT COLUMN (approx 32%) */}
-        <div className={`${mobilePanelView === 'catalogue' ? 'hidden lg:flex' : 'flex'} min-w-0 w-full flex-[1] min-h-0 flex-col gap-6 h-[calc(100dvh-11rem)] max-h-[calc(100dvh-11rem)] lg:sticky lg:top-4 lg:h-[calc(100vh-140px)] lg:max-h-[calc(100vh-140px)]`}>
+        <div className={`pos-bill-column ${mobilePanelView === 'catalogue' ? 'hidden lg:flex' : 'flex'} min-w-0 w-full flex-[1] min-h-0 flex-col gap-6 h-[calc(100dvh-11rem)] max-h-[calc(100dvh-11rem)] lg:sticky lg:top-4 lg:h-[calc(100vh-140px)] lg:max-h-[calc(100vh-140px)]`}>
           <div className="flex min-h-0 h-full max-h-full flex-col overflow-hidden rounded-2xl border border-[#D1FAE5]/60 bg-[#FAF9F6] shadow-sm">
 
             {/* Header */}
             <div className="flex items-center justify-between p-3 border-b border-[#D1FAE5]/60 bg-white shrink-0">
-              <h3 className="text-xl md:text-base font-black text-[#111111] flex items-center gap-2">
+              <h3 className="text-lg md:text-base font-black text-[#111111] flex items-center gap-2">
                 <Receipt size={16} className="text-[#047857]" />
                 Current Order
               </h3>
@@ -1328,7 +1298,7 @@ export default function Pos(props: PosProps = {}) {
                 {/* Grand Total */}
                 <div className="flex items-center justify-between pt-0.5">
                   <span className="text-sm font-black text-[#111111] uppercase tracking-wider">Grand Total</span>
-                  <span className="text-2xl font-black text-[#111111] tracking-tight">{formatCurrency(total)}</span>
+                  <span className="text-xl font-black text-[#111111] tracking-tight md:text-2xl">{formatCurrency(total)}</span>
                 </div>
               </div>
 
@@ -1407,6 +1377,7 @@ export default function Pos(props: PosProps = {}) {
               <p className="mt-2 text-center text-xs font-bold text-[#6B7280]">Deposit orders do not count as revenue until the remaining payment is received.</p>
             </div>
           </div>
+        </div>
         </div>
 
       </div>

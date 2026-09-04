@@ -4,6 +4,7 @@ import { BarChart3, Boxes, Box, FileText, List, LogOut, Menu, Package, ReceiptIn
 import { useState } from 'react'
 import { BRAND_EN, BRAND_LOGO } from '../lib/brand'
 import { useAdminAuthStore } from '../store/store'
+import { InventoryNotificationCenter } from './InventoryNotificationCenter'
 
 const links = [
   { href: '/pos', label: 'Billing Panel', icon: ShoppingCart },
@@ -16,7 +17,7 @@ const links = [
   { href: '/expenses', label: 'Expense Tracker', icon: ReceiptIndianRupee },
 ]
 
-export function AdminModuleShell({ title, subtitle, children }: { title: string; subtitle: string; children: ReactNode }) {
+export function AdminModuleShell({ title, subtitle, children, mobileBrandOnly = false }: { title: string; subtitle: string; children: ReactNode; mobileBrandOnly?: boolean }) {
   const location = useLocation()
   const navigate = useNavigate()
   const logout = useAdminAuthStore(state => state.logout)
@@ -43,9 +44,10 @@ export function AdminModuleShell({ title, subtitle, children }: { title: string;
       </aside>
       <main className="min-w-0 flex-1 lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain">
         <div className="border-b border-borderLight bg-cardBg px-4 py-4 sm:px-8 sm:py-5">
-          <div className="mx-auto flex max-w-7xl items-start gap-3">
+          <div className="mx-auto flex max-w-7xl items-start gap-2 sm:gap-3">
             <button type="button" onClick={() => setMobileNavOpen(true)} aria-label="Open navigation" className="touch-target mt-0.5 inline-flex items-center justify-center rounded-xl border border-borderLight bg-[#FFFDF8] lg:hidden"><Menu size={20} /></button>
-            <div className="min-w-0"><div className="mb-1 flex items-center gap-2 text-xs font-black uppercase tracking-[.2em] text-textMuted lg:hidden"><img src={BRAND_LOGO} alt="" className="h-7 w-7 rounded-lg object-contain" />{BRAND_EN}</div><h1 className="text-2xl font-black tracking-tight text-[#171717] sm:text-3xl">{title}</h1><p className="mt-1 text-sm text-textMuted">{subtitle}</p></div>
+            {mobileBrandOnly && <div className="flex min-w-0 flex-1 items-center gap-2 lg:hidden"><img src={BRAND_LOGO} alt={`${BRAND_EN} logo`} className="h-8 w-8 rounded-lg object-contain" /><span className="truncate text-xs font-black uppercase tracking-[.18em] text-textMain">{BRAND_EN}</span></div>}
+            <div className={`${mobileBrandOnly ? 'hidden lg:block' : ''} min-w-0 flex-1`}>{!mobileBrandOnly && <div className="mb-1 flex items-center gap-2 text-xs font-black uppercase tracking-[.2em] text-textMuted lg:hidden"><img src={BRAND_LOGO} alt="" className="h-7 w-7 rounded-lg object-contain" />{BRAND_EN}</div>}<h1 className="text-2xl font-black tracking-tight text-[#171717] sm:text-3xl">{title}</h1><p className="mt-1 text-sm text-textMuted">{subtitle}</p></div><InventoryNotificationCenter />
           </div>
         </div>
         <div className="mx-auto max-w-7xl px-4 py-5 sm:px-8 sm:py-8">{children}</div>
